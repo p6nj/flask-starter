@@ -26,7 +26,7 @@ def test_liste_produits(client):
             {
                 "name": "Brown eggs",
                 "id": 1,
-                "in_stock": true,
+                "in_stock": True,
                 "description": "Raw organic brown eggs in a basket",
                 "price": 28.1,
                 "weight": 400,
@@ -35,7 +35,7 @@ def test_liste_produits(client):
             {
                 "description": "Sweet fresh stawberry on the wooden table",
                 "image": "1.jpg",
-                "in_stock": true,
+                "in_stock": True,
                 "weight": 299,
                 "id": 2,
                 "name": "Sweet fresh stawberry",
@@ -44,3 +44,140 @@ def test_liste_produits(client):
         ]
     }
     assert attendu == response.data, "test failed"
+
+
+
+# -*- coding: utf-8 -*-
+import pytest
+from inf349.views import calculate_shipping_price, is_card_accepted
+from inf349.models import Order, Product
+
+
+@pytest.fixture
+def client():
+    """Création d'un client de test avec une base SQLite en mémoire"""
+    from inf349 import create_app
+    app = create_app({"TESTING": True, "DATABASE": ":memory:"})
+    
+    with app.app_context():
+        yield app.test_client()
+
+
+# Test des fonctions métiers (calcul prix livraison & carte de crédit)
+def test_calculate_shipping_price():
+    assert calculate_shipping_price(100) == 5
+    assert calculate_shipping_price(600) == 10
+    assert calculate_shipping_price(2500) == 25  
+
+def test_is_card_accepted():
+    assert is_card_accepted("4242 4242 4242 4242") == "valid"
+    assert is_card_accepted("4000 0000 0000 0002") == "declined"
+    assert is_card_accepted("1234 5678 9101 1121") is None
+
+
+# Test récupération des produits (GET /)
+def test_product(client):
+    response = client.get('/')
+    assert response.status_code == 200
+    data = response.get_json()
+    assert "products" in data
+    assert len(data['products']) > 0  
+
+
+# Test création de commande (POST /order)
+def test_create_order(client):
+    product_data = {"product": {"id": 1, "quantity": 2}}
+    response = client.post('/order', json=product_data)
+    
+    assert response.status_code == 302
+    location = response.headers.get('Location')
+    assert location is not None
+
+
+# Test récupération d'une commande existante (GET /order/<id>)
+def test_get_order(client):
+    # Création d'une commande
+    order_response = client.post('/order', json={"product": {"id": 1, "quantity": 2}})
+    order_id = order_response.headers["Location"].split("/")[-1]
+
+    response = client.get(f"/order/{order_id}")
+    assert response.status_code == 200
+    data = response.get_json()
+    assert 'order' in data
+    assert data['order']['id'] == int(order_id)
+
+
+# Test mise à jour d'une commande avec adresse et email (PUT /order/<id>)
+def test_update_order_shipping_info(client):
+    order_response = client.post('/order', json={"product": {"id": 1, "quantity": 2}})
+    order_id = order_response.headers["Location"].split("/")[-1]
+
+    update_data = {
+        "order": {
+            "email": "jgnault@uqac.ca",
+            "shipping_information": {
+                "country": "Canada",
+                "address": "201, rue Président-Kennedy",
+                "postal_code": "G7X 3Y7",
+                "city": "Chicoutimi",
+                "province": "QC"
+            }
+        }
+    }
+    response = client.put(f'/order/{order_id}', json=update_data)
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['order']['email'] == "jgnault@uqac.ca"
+
+
+# Test paiement réussi (PUT /order/<id>)
+def test_payment_success(client):
+    order_response = client.post('/order', json={"product": {"id": 1, "quantity": 2}})
+    order_id = order_response.headers["Location"].split("/")[-1]
+
+    client.put(f"/order/{order_id}", json={
+        "order": {
+            "email": "jgnault@uqac.ca",
+            "shipping_information": {
+                "country": "Canada",
+                "address": "201, rue Président-Kennedy",
+                "postal_code": "G7X 3Y7",
+                "city": "Chicoutimi",
+                "province": "QC"
+            }
+        }
+    })
+
+    payment_data = {
+        "credit_card": {
+            "name": "John Doe",
+            "number": "4242 4242 4242 4242",
+            "expiration_year": 2024,
+            "cvv": "123",
+            "expiration_month": 9
+        }
+    }
+    response = client.put(f'/order/{order_id}', json=payment_data)
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['order']['paid'] is True
+
+
+# Test carte refusée (PUT /order/<id>)
+def test_payment_declined(client):
+    order_response = client.post('/order', json={"product": {"id": 1, "quantity": 2}})
+    order_id = order_response.headers["Location"].split("/")[-1]
+
+    payment_data = {
+        "credit_card": {
+            "name": "John Doe",
+            "number": "4000 0000 0000 0002",  # Carte refusée
+            "expiration_year": 2024,
+            "cvv": "123",
+            "expiration_month": 9
+        }
+    }
+    response = client.put(f'/order/{order_id}', json=payment_data)
+    assert response.status_code == 422
+    data = response.get_json()
+    assert data["errors"]["credit_card"]["code"] == "card-declined"
