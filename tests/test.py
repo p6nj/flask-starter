@@ -45,24 +45,6 @@ def test_liste_produits(client):
     }
     assert attendu == response.data, "test failed"
 
-
-
-# -*- coding: utf-8 -*-
-import pytest
-from inf349.views import calculate_shipping_price, is_card_accepted
-from inf349.models import Order, Product
-
-
-@pytest.fixture
-def client():
-    """Création d'un client de test avec une base SQLite en mémoire"""
-    from inf349 import create_app
-    app = create_app({"TESTING": True, "DATABASE": ":memory:"})
-    
-    with app.app_context():
-        yield app.test_client()
-
-
 # Test des fonctions métiers (calcul prix livraison & carte de crédit)
 def test_calculate_shipping_price():
     assert calculate_shipping_price(100) == 5
@@ -223,4 +205,3 @@ def test_Commande_Produit_Hors_Stock(client):
         }
     }, "Le message d'erreur retourné est incorrect"
 
-    
