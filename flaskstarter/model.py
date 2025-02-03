@@ -7,6 +7,8 @@ from peewee import (
     Model,
     Check,
     ForeignKeyField,
+    UUIDField,
+    BigIntegerField,
 )
 
 
@@ -37,13 +39,31 @@ class ProductOrderQuantity(Model):
     quantity = IntegerField(constraints=[Check("quantity > 0")])
 
 
+class CreditCardDetails(Model):
+    name = CharField()
+    number = DecimalField(max_digits=16, decimal_places=0)
+    expiration_year = DecimalField(max_digits=4, decimal_places=0)
+    cvv = DecimalField(max_digits=3, decimal_places=0)
+    expiration_month = DecimalField(
+        max_digits=2,
+        decimal_places=0,
+        constraints=[Check("expiration_month < 13"), Check("expiration_month > 0")],
+    )
+
+
+class Transaction(Model):
+    id = UUIDField(primary_key=True)
+    success = BooleanField()
+    amount_charged = BigIntegerField()
+
+
 class Order(Model):
     # peewee automatically adds an auto-incrementing id
     product = ForeignKeyField(ProductOrderQuantity)
     email = CharField(null=True)
-    credit_card = CharField(null=True)  # TODO: switch type to something more meaningful
+    credit_card = ForeignKeyField(CreditCardDetails, null=True)
     shipping_information = ForeignKeyField(
         ShippingInformation, backref="orders_shipped_there", null=True
     )
-    transaction = CharField(null=True)  # TODO: switch type to something more meaningful
+    transaction = ForeignKeyField(Transaction, null=True)
     paid = BooleanField(default=False)
