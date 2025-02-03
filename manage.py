@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from sqlalchemy.orm.mapper import configure_mappers
+from peewee import Model
 
 from flaskstarter import create_app
 from flaskstarter.extensions import db
-from flaskstarter.user import Users, ADMIN, USER, ACTIVE
-from flaskstarter.tasks import MyTaskModel
 
 application = create_app()
 
@@ -13,9 +11,6 @@ application = create_app()
 @application.cli.command("initdb")
 def initdb():
     """Init/reset database."""
-
-    db.drop_all()
-    configure_mappers()
-    db.create_all()
+    db.create_tables(Model.__subclasses__())
 
     # préparation de la base
