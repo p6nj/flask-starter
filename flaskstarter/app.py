@@ -4,13 +4,12 @@ from flask import Flask
 
 
 # For import *
-__all__ = ['create_app']
+__all__ = ["create_app"]
 
 
-def create_app(config=None, app_name=None):
+def create_app(config=None):
     # Create a Flask app
 
-    app = Flask(app_name,
-                instance_relative_config=True)
+    app = Flask(__name__)
 
     return app

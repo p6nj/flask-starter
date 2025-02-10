@@ -11,6 +11,8 @@ from peewee import (
     BigIntegerField,
 )
 
+from .extensions import db
+
 
 class Product(Model):
     # id = BigIntegerField(primary_key=True)
@@ -22,6 +24,8 @@ class Product(Model):
     )
     weight = IntegerField(null=True, constraints=[Check("weight > 0")])
     image = CharField()
+    class Meta:
+        database = db
 
 
 class ShippingInformation(Model):
@@ -30,13 +34,17 @@ class ShippingInformation(Model):
     postal_code = CharField()
     city = CharField()
     province = CharField(max_length=2)
+    class Meta:
+        database = db
 
 
 class ProductOrderQuantity(Model):
     # TODO: uncomment line below and move class definition to have multiple products per order (next version)
     # oid = ForeignKeyField(Order, backref='products')
-    pid = ForeignKeyField(Product, backref="order_quantities", column_name="id")
+    pid = ForeignKeyField(Product, backref="order_quantities")
     quantity = IntegerField(constraints=[Check("quantity > 0")])
+    class Meta:
+        database = db
 
 
 class CreditCardDetails(Model):
@@ -49,12 +57,16 @@ class CreditCardDetails(Model):
         decimal_places=0,
         constraints=[Check("expiration_month < 13"), Check("expiration_month > 0")],
     )
+    class Meta:
+        database = db
 
 
 class Transaction(Model):
     id = UUIDField(primary_key=True)
     success = BooleanField()
     amount_charged = BigIntegerField()
+    class Meta:
+        database = db
 
 
 class Order(Model):
@@ -67,3 +79,5 @@ class Order(Model):
     )
     transaction = ForeignKeyField(Transaction, null=True)
     paid = BooleanField(default=False)
+    class Meta:
+        database = db
