@@ -15,7 +15,6 @@ from .extensions import db
 
 
 class Product(Model):
-    # id = BigIntegerField(primary_key=True)
     name = CharField()
     in_stock = BooleanField(default=True)
     description = TextField(null=True)
@@ -70,7 +69,6 @@ class Transaction(Model):
 
 
 class Order(Model):
-    # peewee automatically adds an auto-incrementing id
     product = ForeignKeyField(ProductOrderQuantity)
     email = CharField(null=True)
     credit_card = ForeignKeyField(CreditCardDetails, null=True)
